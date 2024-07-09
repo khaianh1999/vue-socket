@@ -2,18 +2,20 @@
   <div>
     <form @submit.prevent="submitToken">
       <input type="text" placeholder="user_name" v-model="inforUser.userName" />
-      <input type="number" placeholder="id" v-model="inforUser.userId" />
-      <input type="number" placeholder="room_id" v-model="inforUser.roomId" />
+      <select v-model="inforUser.gender">
+        <option value="male">Nam</option>
+        <option value="female">Nữ</option>
+      </select>
       <button type="submit">Submit</button>
     </form>
     <div>{{ notification }}</div>
     <div class="box">
       <div class="messages">
         <div v-for="message in messages" :key="message.userId">
-          <template v-if="message.type == 'welcome'">
+          <template v-if="message.type == 'welcome' || message.type == 'disconnecting'">
             {{ message.content }}
           </template>
-          <template v-else>
+          <template v-else-if="message.type == 'message'">
             {{ message.userName }}: {{ message.content }}
           </template>
         </div>
@@ -47,9 +49,10 @@ export default {
       inputMessageText: "",
       messages: [],
       inforUser: {
-        userId: "",
+        userId: Math.floor(Math.random() * 100000),// random tạm userId
         userName: "",
         roomId: "",
+        gender: "male",
       },
       notification: "",
       socket: null,
@@ -63,8 +66,9 @@ export default {
 
       SocketioService.subscribeRoom(this.inforUser, (cb) => {
         console.log("cb", cb);
-        if (cb.succes) {
+        if (cb.success) {
           // Tạo room thành công
+          this.inforUser.roomId = cb.roomId;
           this.notification = "Tạo room thành công!";
           // this.listenForMessages(); // Call listenForMessages after subscribing to the room
 
@@ -79,9 +83,12 @@ export default {
       console.log(`Event received: ${eventName}`, eventData);
       switch (eventName) {
         case "message":
-          this.messages.push({ ...eventData, type: "welcome" });
+          this.messages.push(eventData);
           break;
         case "server-send-message":
+          this.messages.push(eventData);
+          break;
+        case "server-disconnecting":
           this.messages.push(eventData);
           break;
         default:
